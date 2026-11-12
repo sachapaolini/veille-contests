@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contests">
+<meta name="theme-color" content="#0d0d0f">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+<title>Veille DJ contests – Schranz</title>
+<style>
+:root{--bg:#f4f3f1;--card:#fff;--fg:#141414;--mute:#6b6b6b;--line:#e2e0dc;--acc:#d9122b;--acc-soft:#fde7ea;--ok:#1d7a46}
+@media (prefers-color-scheme:dark){:root{--bg:#0d0d0f;--card:#18181b;--fg:#f2f2f2;--mute:#9a9aa2;--line:#2a2a2f;--acc:#ff3b52;--acc-soft:#3a1218;--ok:#4cc985}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0);-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top,0) + 14px) 16px 10px;border-bottom:1px solid var(--line)}
+h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0;text-transform:uppercase}
+h1 span{color:var(--acc)}
+.maj{color:var(--mute);font-size:13px;margin:4px 0 10px}
+.filtres{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.filtres::-webkit-scrollbar{display:none}
+.filtres button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--fg);
+  padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600}
+.filtres button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+main{padding:12px 16px 40px;max-width:680px;margin:auto}
+.c{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;position:relative}
+.c.fav{border-color:var(--acc);box-shadow:inset 4px 0 0 var(--acc)}
+.top{display:flex;gap:10px;align-items:flex-start}
+.score{flex:none;min-width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+  font-weight:800;font-size:15px;background:var(--acc-soft);color:var(--acc)}
+.c a{color:var(--fg);text-decoration:none;font-weight:650;font-size:16px;line-height:1.3;display:block}
+.meta{color:var(--mute);font-size:12.5px;margin-top:4px}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.tags span{font-size:11.5px;padding:3px 8px;border-radius:6px;background:var(--bg);color:var(--mute)}
+.tags span.s{background:var(--acc);color:#fff;font-weight:700}
+.act{display:flex;gap:8px;margin-top:12px}
+.act button{flex:1;border:1px solid var(--line);background:transparent;color:var(--fg);padding:9px;border-radius:10px;font-size:14px}
+.act button.on{color:var(--acc);border-color:var(--acc)}
+.vide{text-align:center;color:var(--mute);padding:50px 20px;line-height:1.5}
+.nouveau{position:absolute;top:-7px;right:12px;background:var(--ok);color:#fff;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<header>
+  <h1>DJ Contests <span>Schranz</span></h1>
+  <div class="maj">Mis à jour le __MAJ__</div>
+  <div class="filtres" id="filtres">
+    <button data-f="tous" class="on">Tous</button>
+    <button data-f="schranz">Schranz</button>
+    <button data-f="paris">Paris / IDF</button>
+    <button data-f="fav">★ Favoris</button>
+    <button data-f="masques">Masqués</button>
+  </div>
+</header>
+<main id="liste"></main>
+<script>
+const DATA = __DATA__;
+const IDF = ["paris","île-de-france","ile-de-france","idf","saint-denis","montreuil","pantin","ivry","aubervilliers"];
+let etat = {fav:[], masques:[], vus:[]};
+try { etat = Object.assign(etat, JSON.parse(localStorage.getItem("veille-etat") || "{}")); } catch(e) {}
+const sauver = () => { try { localStorage.setItem("veille-etat", JSON.stringify(etat)); } catch(e) {} };
+const nouveaux = new Set(DATA.map(d => d.u).filter(u => !etat.vus.includes(u)));
+let filtre = "tous";
+
+function bascule(liste, u){ const i = etat[liste].indexOf(u); i < 0 ? etat[liste].push(u) : etat[liste].splice(i,1); sauver(); rendre(); }
+
+function rendre(){
+  const L = document.getElementById("liste");
+  const items = DATA.filter(d => {
+    const masque = etat.masques.includes(d.u);
+    if (filtre === "masques") return masque;
+    if (masque) return false;
+    if (filtre === "schranz") return d.k.includes("schranz");
+    if (filtre === "paris") return d.k.some(k => IDF.includes(k));
+    if (filtre === "fav") return etat.fav.includes(d.u);
+    return true;
+  });
+  L.replaceChildren();
+  if (!items.length){
+    const v = document.createElement("div"); v.className = "vide";
+    v.textContent = DATA.length ? "Rien dans ce filtre pour l’instant." : "Aucun contest repéré pour l’instant. La veille tourne chaque matin, reviens bientôt.";
+    L.append(v); return;
+  }
+  for (const d of items){
+    const c = document.createElement("div"); c.className = "c" + (etat.fav.includes(d.u) ? " fav" : "");
+    if (nouveaux.has(d.u)) { const n = document.createElement("div"); n.className = "nouveau"; n.textContent = "NOUVEAU"; c.append(n); }
+    const top = document.createElement("div"); top.className = "top";
+    const s = document.createElement("div"); s.className = "score"; s.textContent = d.s;
+    const box = document.createElement("div");
+    const a = document.createElement("a"); a.href = d.u; a.target = "_blank"; a.rel = "noopener"; a.textContent = d.t;
+    const m = document.createElement("div"); m.className = "meta";
+    let host = ""; try { host = new URL(d.u).hostname.replace(/^www\./,""); } catch(e) {}
+    m.textContent = host + " · repéré le " + d.d.split("-").reverse().join("/");
+    box.append(a, m); top.append(s, box); c.append(top);
+    const tags = document.createElement("div"); tags.className = "tags";
+    for (const k of d.k){ const t = document.createElement("span"); if (k === "schranz") t.className = "s"; t.textContent = k; tags.append(t); }
+    c.append(tags);
+    const act = document.createElement("div"); act.className = "act";
+    const bf = document.createElement("button"); bf.textContent = etat.fav.includes(d.u) ? "★ Favori" : "☆ Favori";
+    if (etat.fav.includes(d.u)) bf.className = "on"; bf.onclick = () => bascule("fav", d.u);
+    const bm = document.createElement("button"); bm.textContent = etat.masques.includes(d.u) ? "Réafficher" : "Masquer";
+    bm.onclick = () => bascule("masques", d.u);
+    act.append(bf, bm); c.append(act);
+    L.append(c);
+  }
+}
+
+document.getElementById("filtres").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  filtre = b.dataset.f;
+  document.querySelectorAll("#filtres button").forEach(x => x.classList.toggle("on", x === b));
+  rendre();
+});
+rendre();
+// Les éléments affichés ne seront plus marqués « nouveau » à la prochaine visite
+etat.vus = Array.from(new Set(etat.vus.concat(DATA.map(d => d.u)))).slice(-1000); sauver();
+</script>
+</body>
+</html>
